@@ -1,0 +1,52 @@
+2025-07-07T10:23:24.268Z - GET /api/send-policies
+::1 - - [07/Jul/2025:10:23:24 +0000] "GET /api/send-policies HTTP/1.1" 500 77 "-" "PostmanRuntime/7.44.1"
+2025-07-07T10:23:56.428Z - GET /api/send-policies
+::1 - - [07/Jul/2025:10:23:56 +0000] "GET /api/send-policies HTTP/1.1" 500 77 "-" "PostmanRuntime/7.44.1"
+2025-07-07T10:25:52.389Z - GET /api/send-policies
+::1 - - [07/Jul/2025:10:25:52 +0000] "GET /api/send-policies HTTP/1.1" 500 77 "-" "PostmanRuntime/7.44.1"
+::1 - - [07/Jul/2025:10:56:48 +0000] "POST /api/send-policies HTTP/1.1" 500 38 "-" "PostmanRuntime/7.44.1"
+2025-07-07T10:56:48.190Z - POST /api/send-policies
+2025-07-07T10:57:33.056Z - POST /api/send-policies
+::1 - - [07/Jul/2025:10:57:34 +0000] "POST /api/send-policies HTTP/1.1" 200 155 "-" "PostmanRuntime/7.44.1"
+2025-07-07T10:58:34.504Z - POST /api/send-policies
+::1 - - [07/Jul/2025:10:58:35 +0000] "POST /api/send-policies HTTP/1.1" 200 155 "-" "PostmanRuntime/7.44.1"
+2025-07-07T11:00:11.425Z - POST /api/send-policies
+::1 - - [07/Jul/2025:11:00:13 +0000] "POST /api/send-policies HTTP/1.1" 200 155 "-" "PostmanRuntime/7.44.1"
+2025-07-07T11:01:02.576Z - POST /api/send-policies
+::1 - - [07/Jul/2025:11:01:04 +0000] "POST /api/send-policies HTTP/1.1" 200 155 "-" "PostmanRuntime/7.44.1"
+2025-07-07T11:03:25.058Z - POST /api/send-policies
+::1 - - [07/Jul/2025:11:03:26 +0000] "POST /api/send-policies HTTP/1.1" 200 183 "-" "PostmanRuntime/7.44.1"
+2025-07-07T11:06:25.432Z - POST /api/send-policies
+::1 - - [07/Jul/2025:11:06:26 +0000] "POST /api/send-policies HTTP/1.1" 200 183 "-" "PostmanRuntime/7.44.1"
+2025-07-07T11:08:01.439Z - POST /api/send-policies
+::1 - - [07/Jul/2025:11:08:02 +0000] "POST /api/send-policies HTTP/1.1" 200 183 "-" "PostmanRuntime/7.44.1"
+2025-07-07T11:09:21.458Z - POST /api/send-policies
+::1 - - [07/Jul/2025:11:09:22 +0000] "POST /api/send-policies HTTP/1.1" 200 183 "-" "PostmanRuntime/7.44.1"
+2025-07-07T11:09:41.676Z - POST /api/send-policies
+::1 - - [07/Jul/2025:11:09:43 +0000] "POST /api/send-policies HTTP/1.1" 200 183 "-" "PostmanRuntime/7.44.1"
+2025-07-07T11:09:55.069Z - POST /api/send-policies
+::1 - - [07/Jul/2025:11:09:56 +0000] "POST /api/send-policies HTTP/1.1" 200 183 "-" "PostmanRuntime/7.44.1"
+2025-07-07T11:12:08.077Z - POST /api/send-policies
+::1 - - [07/Jul/2025:11:12:09 +0000] "POST /api/send-policies HTTP/1.1" 200 183 "-" "PostmanRuntime/7.44.1"
+2025-07-07T11:14:58.593Z - POST /api/send-policies
+::1 - - [07/Jul/2025:11:15:00 +0000] "POST /api/send-policies HTTP/1.1" 200 183 "-" "PostmanRuntime/7.44.1"
+2025-07-07T11:19:26.076Z - POST /api/send-policies
+::1 - - [07/Jul/2025:11:19:27 +0000] "POST /api/send-policies HTTP/1.1" 200 183 "-" "PostmanRuntime/7.44.1"
+2025-07-07T11:21:46.534Z - POST /api/send-policies
+::1 - - [07/Jul/2025:11:21:48 +0000] "POST /api/send-policies HTTP/1.1" 200 183 "-" "PostmanRuntime/7.44.1"
+2025-07-07T11:27:30.274Z - POST /api/send-policies
+::1 - - [07/Jul/2025:11:27:31 +0000] "POST /api/send-policies HTTP/1.1" 200 183 "-" "PostmanRuntime/7.44.1"
+2025-07-07T11:29:39.514Z - POST /api/send-policies
+::1 - - [07/Jul/2025:11:29:41 +0000] "POST /api/send-policies HTTP/1.1" 200 184 "-" "PostmanRuntime/7.44.1"
+2025-07-07T11:31:24.662Z - POST /api/send-policies
+::1 - - [07/Jul/2025:11:31:26 +0000] "POST /api/send-policies HTTP/1.1" 200 86 "-" "PostmanRuntime/7.44.1"
+2025-07-07T11:37:11.825Z - POST /api/send-policies
+::1 - - [07/Jul/2025:11:37:13 +0000] "POST /api/send-policies HTTP/1.1" 200 67 "-" "PostmanRuntime/7.44.1"
+2025-07-07T11:39:06.308Z - POST /api/send-policies
+::1 - - [07/Jul/2025:11:39:08 +0000] "POST /api/send-policies HTTP/1.1" 500 33 "-" "PostmanRuntime/7.44.1"
+2025-07-07T11:44:54.620Z - POST /api/send-policies
+::1 - - [07/Jul/2025:11:44:56 +0000] "POST /api/send-policies HTTP/1.1" 200 86 "-" "PostmanRuntime/7.44.1"
+2025-07-07T11:45:16.474Z - POST /api/send-policies
+::1 - - [07/Jul/2025:11:45:17 +0000] "POST /api/send-policies HTTP/1.1" 200 67 "-" "PostmanRuntime/7.44.1"
+2025-07-07T11:49:36.481Z - POST /api/send-policies
+::1 - - [07/Jul/2025:11:49:38 +0000] "POST /api/send-policies HTTP/1.1" 200 195 "-" "PostmanRuntime/7.44.1"
