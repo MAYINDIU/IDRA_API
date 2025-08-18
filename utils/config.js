@@ -31,7 +31,7 @@ const connectToDbc = async () => {
 function getConfig() {
     return {
         database: {
-            user: 'POSPR',
+            user: 'pospr',
             password: 'pospr',
             connectString: '192.168.60.207:1521/ORA1'
         },

@@ -8,6 +8,8 @@ require('dotenv').config();
 
 const PORT = process.env.PORT || 3002;
 
+
+
 // Start server and test DB connection
 const startServer = async () => {
     try {

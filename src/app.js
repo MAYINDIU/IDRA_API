@@ -8,7 +8,8 @@ const path = require('path');
 const session = require('express-session');
 const logger = require('./logger');
 const policyRouter = require('./routes/PolicyRoute');
-
+const microRouter = require('./routes/MicroRoute');
+const ordataRouter = require('./routes/MicroorRoute');
 const app = express();
 
 const logDir = path.join(__dirname, '../logs');
@@ -31,5 +32,7 @@ app.use(session({
 
 app.use(logger);
 app.use('/api', policyRouter);
+app.use('/api', microRouter);
+app.use('/api', ordataRouter);
 
 module.exports = app;
