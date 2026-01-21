@@ -1,5 +1,5 @@
 const axios = require("axios");
-const { getPendingORData, getORById, updateORData } = require("../models/MicroOrDateModel");
+const { getPendingORData, getORById, updateORData } = require("../models/EKokORModel");
 
 let sessionToken = null;
 let sessionDate = null;
@@ -48,20 +48,20 @@ async function processORData(req, res) {
     for (const row of rows) {
       const ORID = row.ORID;
       const orRecord = await getORById(connection, ORID);
-      const sendCount = (orRecord.SEND_COUNT || 0) + 1;
-
+      const sendCount = (orRecord?.SEND_COUNT || 0) + 1;
+    //   console.log(orRecord)
       const requestBody = {
         orId: String(orRecord.ORID),
         orSerialNumber: "",
         policyNumber: String(orRecord.POLICYNUMBER),
         productCode: String(orRecord.PRODUCTCODE),
         officeBranchCode: orRecord.OFFICECODE,
-        officeBranchName: orRecord.OFFICENAME,
+        officeBranchName: orRecord.BRNAME,
         orType: orRecord.ORTYPE,
         orDate: formatDate(orRecord.ORDATE),
         dueDate: formatDate(orRecord.DUEDATE),
         fromInstallment: Number(orRecord.FROMINSTALLMENT),
-        toInstallment: Number(orRecord.TOINSTALLMENT),
+        toInstallment: Number(orRecord.TOINSTALL),
         premiumUnitAmount: Number(orRecord.PREMIUMUNITAMOUNT),
         totalPremiumAmount: Number(orRecord.TOTALPREMIUP),
         lateFee: Number(orRecord.LATEFEE),
@@ -87,6 +87,7 @@ async function processORData(req, res) {
         dateOfBirth: formatDate(orRecord.DATEOFBIRTH),
       };
 
+
       try {
         const response = await axios.post(
           "https://idra-ump.com/app/extern/v1/original-receipt",
@@ -101,7 +102,12 @@ async function processORData(req, res) {
         );
 
         const data = response.data;
-        const trackingId = data.orTrackingId || null;
+        // const trackingId = data.orTrackingId || null;
+
+const trackingId = String(orRecord.ORID) + (orRecord?.BRCODE || "");
+
+
+
         const status = data.status || null;
         const code = data.code || null;
         const url = data.url || null;

@@ -6,36 +6,28 @@ async function getPendingORData() {
   const connection = await connectToDbc();
   
   const query = `
-    SELECT *
-    FROM (
-      SELECT *
-      FROM UMP_MICRO_OR_POS
-      WHERE traking_id IS NULL
-        AND brname IS NOT NULL
-        AND PREMIUMMODE IS NOT NULL
-        AND SUBSTR(SUSPENSE,1,1) <> '-'
-        AND TOTALPAYABLEAMOUNT <> 0
-        AND ORID IS NOT NULL
-        AND SUBSTR(ORDATE,1,11) > '2023-03-01'
-        --AND ROWNUM<50000
-      AND SUBSTR(ORDATE,1,11) between '2023-03-01' and '2023-03-31'
-       AND flag is null
-      ORDER BY ORDATE
-    )
+  SELECT *
+FROM (
+    SELECT * FROM ump_ordata_pos
+    WHERE SUBSTR(PROCESS_DATE, 8, 4) = '2025'
+      AND MSG <> 'Single original receipt submitted'
+       AND MSG <> 'This OR exists in UMP'
+    UNION ALL
+    SELECT * FROM ump_ordata_tpos
+    WHERE SUBSTR(PROCESS_DATE, 8, 4) = '2025'
+      AND MSG <> 'Single original receipt submitted'
+       AND MSG <> 'This OR exists in UMP'
+)
+ORDER BY TO_DATE(SUBSTR(PROCESS_DATE,1,11),'DD-Mon-YYYY') DESC
   `;
-/*
-AND SUBSTR(ORDATE,1,11) > '2022-08-30'
-AND SUBSTR(ORDATE,1,11) > '2022-08-28'
-AND SUBSTR(ORDATE,1,11) between '2022-08-22' and '2022-08-25'
-AND SUBSTR(ORDATE,1,11) between '2022-08-01' and '2022-08-21'
-*/
+
   const result = await connection.execute(query, {}, { outFormat: oracledb.OUT_FORMAT_OBJECT });
   return { rows: result.rows, connection };
 }
 
 // Get OR by ORID
 async function getORById(connection, ORID) {
-  const query = `SELECT * FROM UMP_MICRO_OR_POS WHERE ORID = :ORID`;
+  const query = `SELECT * FROM ump_ordata_pos WHERE ORID = :ORID`;
   const result = await connection.execute(
     query,
     { ORID: { val: String(ORID), type: oracledb.STRING } },
@@ -49,7 +41,7 @@ async function updateORData(connection, ORID, updateData) {
   const { trackingId, code, status, message, url, sendCount, currentDate } = updateData;
 
   const query = `
-    UPDATE UMP_MICRO_OR_POS
+    UPDATE ump_ordata_pos
     SET traking_id = :trackingId,
         flag = '1',
         code = :code,

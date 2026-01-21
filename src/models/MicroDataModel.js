@@ -1,6 +1,53 @@
 const oracledb = require('oracledb');
 const { connectToDbc } = require('../../utils/config');
 
+
+
+async function getPolicyDetails(policyNo, birthDate, mobile) {
+  let connection;
+
+  try {
+    connection = await connectToDbc();
+
+    const query = `
+      SELECT 
+        c.NID, c.POLICY_NO, c.DATA_SCHEMA, c.CUSTOMER_NAME, 
+        TO_CHAR(c.BIRTH_DATE, 'YYYY-MM-DD') AS BIRTH_DATE, c.MOBILE,
+        d.PLAN_ID, d.TERM, d.SUM_ASSURED, d.MODE_OF_PAY, d.LIFEPREM, d.TOTALPREM,
+        d.LASTPAID, d.NPAY_DT, d.RISK_DATE, d.MATURITY_DT, d.SOFARPAIDAMOUNT,
+        d.TOTAL_INSTALL, d.TOTAL_PAID_INSTALL, d.GENDER, d.AGENT_NAME,
+        n.NOM_NAME, n.NOM_AGE, n.NOM_REL,
+        p.FPR_OR_DATE, p.FPR_OR_NO, p.TYPE, p.INSTALL_FROM, p.INSTALL_TO, p.PREMIUM_PAID
+      FROM APPS_CUSTOMER_POS c
+      LEFT JOIN APPS_CUSTOMER_DETAILS_POS d 
+        ON c.POLICY_NO = d.POLICY_NO AND c.DATA_SCHEMA = d.DATA_SCHEMA
+      LEFT JOIN APPS_NOMINEE_POS n 
+        ON c.POLICY_NO = n.POLICY_NO AND c.DATA_SCHEMA = n.DATA_SCHEMA
+      LEFT JOIN APPS_PREMIUM_POS p 
+        ON c.POLICY_NO = p.PO_NO AND c.DATA_SCHEMA = p.DATA_SCHEMA
+      WHERE 
+        c.POLICY_NO = :policyNo
+        AND c.DATA_SCHEMA = 'AKOK'
+        AND (
+          (:birthDate IS NOT NULL AND TO_CHAR(c.BIRTH_DATE, 'YYYY-MM-DD') = :birthDate)
+          OR (:mobile IS NOT NULL AND c.MOBILE = :mobile)
+        )
+      ORDER BY p.INSTALL_FROM
+    `;
+
+    const result = await connection.execute(query, {
+      policyNo,
+      birthDate: birthDate || null,
+      mobile: mobile || null
+    }, { outFormat: oracledb.OUT_FORMAT_OBJECT });
+
+    return result.rows; // now returns array of objects
+  } finally {
+    if (connection) await connection.close();
+  }
+}
+
+
 async function getPendingPolicies() {
   const connection = await connectToDbc();
 
@@ -80,5 +127,5 @@ async function updatePolicyStatus(conn, row, status, message, code) {
 
 module.exports = {
   getPendingPolicies,
-  updatePolicyStatus,
+  updatePolicyStatus,getPolicyDetails
 };

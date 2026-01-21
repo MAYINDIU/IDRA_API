@@ -1,6 +1,101 @@
 const axios = require('axios');
-const { getPendingPolicies, updatePolicyStatus } = require('../models/MicroDataModel');
+const { getPendingPolicies,getPolicyDetails, updatePolicyStatus } = require('../models/MicroDataModel');
 const { connectToDbc } = require('../../utils/config');
+
+
+async function fetchPolicy(req, res) {
+  const { PLPasswod, Administration, POLICY_NO, BIRTH_DATE = "", MOBILE = "" } = req.query;
+
+  if (PLPasswod !== "nli" || Administration !== "admin") {
+    return res.status(401).json({
+      status: "unauthorized",
+      message: "Invalid credentials"
+    });
+  }
+
+  if (!POLICY_NO) {
+    return res.status(400).json({
+      status: "error",
+      message: "POLICY_NO parameter missing"
+    });
+  }
+
+  try {
+    const rows = await getPolicyDetails(POLICY_NO, BIRTH_DATE, MOBILE);
+
+    if (rows.length === 0) {
+      return res.json({
+        status: "failed",
+        message: "No matching record found!!"
+      });
+    }
+
+    let customerDetail = {};
+    let nomineeDetail = {};
+    let premiumPayments = [];
+
+    rows.forEach(row => {
+      if (Object.keys(customerDetail).length === 0) {
+        customerDetail = {
+          POLICY_NO: row.POLICY_NO,
+          DATA_SCHEMA: row.DATA_SCHEMA,
+          NID: row.NID,
+          CUSTOMER_NAME: row.CUSTOMER_NAME,
+          BIRTH_DATE: row.BIRTH_DATE,
+          MOBILE: row.MOBILE,
+          PLAN_ID: row.PLAN_ID,
+          TERM: row.TERM,
+          SUM_ASSURED: row.SUM_ASSURED,
+          MODE_OF_PAY: row.MODE_OF_PAY,
+          LIFEPREM: row.LIFEPREM,
+          TOTALPREM: row.TOTALPREM,
+          LASTPAID: row.LASTPAID,
+          NPAY_DT: row.NPAY_DT,
+          RISK_DATE: row.RISK_DATE,
+          MATURITY_DT: row.MATURITY_DT,
+          SOFARPAIDAMOUNT: row.SOFARPAIDAMOUNT,
+          TOTAL_INSTALL: row.TOTAL_INSTALL,
+          TOTAL_PAID_INSTALL: row.TOTAL_PAID_INSTALL,
+          GENDER: row.GENDER,
+          AGENT_NAME: row.AGENT_NAME
+        };
+      }
+
+      if (Object.keys(nomineeDetail).length === 0) {
+        nomineeDetail = {
+          NOM_NAME: row.NOM_NAME,
+          NOM_AGE: row.NOM_AGE,
+          NOM_REL: row.NOM_REL
+        };
+      }
+
+      if (row.FPR_OR_NO) {
+        premiumPayments.push({
+          FPR_OR_DATE: row.FPR_OR_DATE,
+          FPR_OR_NO: row.FPR_OR_NO,
+          TYPE: row.TYPE,
+          INSTALL_FROM: row.INSTALL_FROM,
+          INSTALL_TO: row.INSTALL_TO,
+          PREMIUM_PAID: row.PREMIUM_PAID
+        });
+      }
+    });
+
+    return res.json({
+      status: "success",
+      Customer: customerDetail,
+      Nominee: nomineeDetail,
+      Premiums: premiumPayments
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      status: "error",
+      message: "Server error"
+    });
+  }
+}
+
 
 const sendPoliciesToIDRA = async (req, res) => {
   let connection;
@@ -137,4 +232,4 @@ const sendPoliciesToIDRA = async (req, res) => {
   }
 };
 
-module.exports = { sendPoliciesToIDRA };
+module.exports = { sendPoliciesToIDRA ,fetchPolicy};

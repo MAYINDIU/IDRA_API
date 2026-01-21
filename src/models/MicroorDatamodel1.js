@@ -16,16 +16,19 @@ async function getPendingORData() {
         AND SUBSTR(SUSPENSE,1,1) <> '-'
         AND TOTALPAYABLEAMOUNT <> 0
         AND ORID IS NOT NULL
-        AND SUBSTR(ORDATE,1,11) > '2023-03-01'
-        --AND ROWNUM<50000
-      AND SUBSTR(ORDATE,1,11) between '2023-03-01' and '2023-03-31'
+        AND SUBSTR(ORDATE,1,11) > '2021-01-01'
+        AND ROWNUM<50000
+       AND SUBSTR(ORDATE,1,11) between '2023-01-01' and '2023-01-31'
        AND flag is null
       ORDER BY ORDATE
     )
   `;
+
+
+  
 /*
-AND SUBSTR(ORDATE,1,11) > '2022-08-30'
-AND SUBSTR(ORDATE,1,11) > '2022-08-28'
+AND SUBSTR(ORDATE,1,11) = '2022-08-30'
+AND SUBSTR(ORDATE,1,11) = '2022-08-28'
 AND SUBSTR(ORDATE,1,11) between '2022-08-22' and '2022-08-25'
 AND SUBSTR(ORDATE,1,11) between '2022-08-01' and '2022-08-21'
 */

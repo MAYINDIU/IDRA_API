@@ -10,6 +10,11 @@ const logger = require('./logger');
 const policyRouter = require('./routes/PolicyRoute');
 const microRouter = require('./routes/MicroRoute');
 const ordataRouter = require('./routes/MicroorRoute');
+const ordataRouter1 = require('./routes/MicroorRoute1');
+const ordataRouter2 = require('./routes/MicroorRoute2');
+const ordataRouter3 = require('./routes/MicroorRoute3');
+const ordataRouter4 = require('./routes/MicroorRoute4');
+const EkokordataRouter = require('./routes/EkokorRoute');
 const app = express();
 
 const logDir = path.join(__dirname, '../logs');
@@ -34,5 +39,10 @@ app.use(logger);
 app.use('/api', policyRouter);
 app.use('/api', microRouter);
 app.use('/api', ordataRouter);
+app.use('/api', ordataRouter1);
+app.use('/api', ordataRouter2);
+app.use('/api', ordataRouter3);
+app.use('/api', ordataRouter4);
+app.use('/api', EkokordataRouter);
 
 module.exports = app;
