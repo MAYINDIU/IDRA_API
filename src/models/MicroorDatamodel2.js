@@ -16,9 +16,9 @@ async function getPendingORData() {
         AND SUBSTR(SUSPENSE,1,1) <> '-'
         AND TOTALPAYABLEAMOUNT <> 0
         AND ORID IS NOT NULL
-        AND SUBSTR(ORDATE,1,11) > '2021-01-01'
+        AND SUBSTR(ORDATE,1,11) > '2023-04-01'
      
-       AND SUBSTR(ORDATE,1,11) between '2022-11-01' and '2022-11-25'
+       AND SUBSTR(ORDATE,1,11) between '2023-04-01' and '2023-04-30'
        AND flag is null
       ORDER BY ORDATE
     )

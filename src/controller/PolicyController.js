@@ -1,13 +1,136 @@
 const axios = require('axios');
 const { getPendingPolicies, updatePolicyStatus } = require('../models/PolicyModel');
-const { connectToDbc } = require('../../utils/config');
+
+const BATCH_SIZE = 500;
+const DELAY_BETWEEN_REQUESTS_MS = 1000;  // 1 second between each item
+const RETRY_LIMIT = 5;
+const RETRY_DELAY_MS = 10000;            // 10 seconds wait on 429
+
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+const v = (value) => (value === undefined || value === null || value === '') ? null : value;
+
+async function processRow(conn, row, access_token) {
+  const payload = {
+    policyNumber: v(row.POLICYNUMBER),
+    projectCode: v(row.PROJECTCODE),
+    policyHolderName: v(row.POLICYHOLDERNAME),
+    dateOfBirth: v(row.DATEOFBIRTH),
+    policyStartDate: v(row.POLICYSTARTDATE),
+    policyEndDate: v(row.POLICYENDDATE),
+    riskStartDate: v(row.RISKSTARTDATE),
+    term: v(row.TERM),
+    assuredSum: v(row.ASSUREDSUM),
+    totalPremium: v(row.TOTALPREMIUM),
+    noOfPaidInstallment: v(row.NOOFPAIDINSTALLMENT),
+    totalPaidAmount: v(row.TOTALPAIDAMOUNT),
+    status: null,
+    email: v(row.EMAIL),
+    address: v(row.ADDRESS),
+    postalCode: v(row.POSTALCODE),
+    district: v(row.DISTRICT),
+    gender: v(row.GENDER),
+    mobileNumber: v(row.MOBILENUMBER),
+    policyType: v(row.POLICYTYPE),
+    productName: v(row.PRODUCTNAME),
+    productCode: v(row.PRODUCTCODE),
+    premiumMode: v(row.PREMIUMMODE),
+    lifePremium: v(row.LIFEPREMIUM),
+    supplyPremium: v(row.SUPPLYPREMIUM),
+    externalLoad: v(row.EXTERNALLOAD),
+    nextPremiumDueDate: v(row.NEXTPREMIUMDUEDATE),
+    identificationType: v(row.IDENTIFICATIONTYPE),
+    identificationNumber: v(row.IDENTIFICATIONNUMBER),
+    agentId: v(row.AGENTID),
+    agentMobileNumber: v(row.AGENTMOBILENUMBER),
+    agentName: v(row.AGENTNAME),
+    sumAtRisk: v(row.ASSUREDSUM),
+    policyOption: v(row.POLICYOPTION) ?? '',
+    surrenderDate: v(row.SURRENDERDATE) ?? '',
+  };
+
+  const missingFields = Object.entries(payload)
+    .filter(([key, value]) => value === null && key !== 'status' && key !== 'identificationType')
+    .map(([key]) => key);
+
+  const missingMessage = missingFields.length > 0
+    ? `Missing fields: ${missingFields.join(', ')}`
+    : null;
+
+  if (missingMessage) {
+    console.warn(`⚠️ Policy ${row.POLICYNUMBER} — ${missingMessage}`);
+  }
+
+  let response;
+  for (let attempt = 1; attempt <= RETRY_LIMIT; attempt++) {
+    try {
+      response = await axios.post(
+        'https://e-service.idra.org.bd/api/v1/policy',
+        payload,
+        {
+          headers: {
+            Authorization: `Bearer ${access_token}`,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+      break;
+    } catch (err) {
+      const is429 = err.response?.status === 429;
+      if (is429 && attempt < RETRY_LIMIT) {
+        console.warn(`⏳ 429 Rate limit on ${row.POLICYNUMBER} — waiting ${RETRY_DELAY_MS / 1000}s before retry (attempt ${attempt}/${RETRY_LIMIT})`);
+        await sleep(RETRY_DELAY_MS);
+      } else {
+        throw err;
+      }
+    }
+  }
+
+  const rawStatus = response.data.status;
+  const status = typeof rawStatus === 'boolean' ? (rawStatus ? '1' : '0') : String(rawStatus ?? '');
+  const message = String(response.data.message ?? '');
+  const code = String(response.data.code ?? '');
+
+  const dbResult = await updatePolicyStatus(conn, row, status, message, code);
+
+  console.log(`✅ ${row.POLICYNUMBER} | IDRA: ${status} | rowsAffected: ${dbResult?.rowsAffected ?? 0}`);
+
+  return {
+    policyNumber: row.POLICYNUMBER,
+    idraResponse: {
+      rawStatus,
+      status,
+      code,
+      message,
+      data: response.data.data ?? null,
+    },
+    dbUpdate: {
+      rowsAffected: dbResult?.rowsAffected ?? 0,
+    },
+    ...(missingMessage && { warning: missingMessage }),
+  };
+}
+
+async function processBatch(conn, batch, access_token) {
+  const successes = [];
+  const failures = [];
+
+  for (const row of batch) {
+    try {
+      const result = await processRow(conn, row, access_token);
+      successes.push(result);
+    } catch (err) {
+      console.error(`❌ Failed: ${row.POLICYNUMBER} — ${err.message}`);
+      failures.push({ policyNumber: row.POLICYNUMBER, error: err.message });
+    }
+    await sleep(DELAY_BETWEEN_REQUESTS_MS);
+  }
+
+  return { successes, failures };
+}
 
 const sendPoliciesToIDRA = async (req, res) => {
   let connection;
-  let successCount = 0;
-  let failureCount = 0;
-  let failures = [];
-  let feedbacks = [];
 
   try {
     if (!req.session) {
@@ -18,10 +141,10 @@ const sendPoliciesToIDRA = async (req, res) => {
 
     if (!access_token) {
       const tokenRes = await axios.post(
-        'https://idra-ump.com/app/extern/v1/authenticate',
+        'https://e-service.idra.org.bd/api/v1/authenticate',
         {
-          client_id: 'national',
-          client_secret: 'wReuzKZy9N',
+          client_id: 'mizan_plicl@yahoo.com',
+          client_secret: 'national@2026#',
         },
         {
           headers: {
@@ -31,6 +154,7 @@ const sendPoliciesToIDRA = async (req, res) => {
         }
       );
 
+      console.log('Token Response Data:', tokenRes.data);
       access_token = tokenRes.data.access_token;
       req.session.access_token_data1 = access_token;
     }
@@ -42,86 +166,32 @@ const sendPoliciesToIDRA = async (req, res) => {
       return res.json({ message: 'No policies to process.', totalSent: 0, totalFailed: 0 });
     }
 
-    for (const row of rows) {
-      const payload = {
-        policyNumber: row.POLICYNUMBER,
-        projectCode: row.PROJECTCODE,
-        policyHolderName: row.POLICYHOLDERNAME,
-        dateOfBirth: row.DATEOFBIRTH,
-        policyStartDate: row.POLICYSTARTDATE,
-        policyEndDate: row.POLICYENDDATE,
-        riskStartDate: row.RISKSTARTDATE,
-        term: row.TERM,
-        assuredSum: row.ASSUREDSUM,
-        totalPremium: row.TOTALPREMIUM,
-        noOfPaidInstallment: row.NOOFPAIDINSTALLMENT,
-        totalPaidAmount: row.TOTALPAIDAMOUNT,
-        status: null, // force null
-        email: row.EMAIL,
-        address: row.ADDRESS,
-        postalCode: row.POSTALCODE,
-        district: row.DISTRICT,
-        gender: row.GENDER,
-        mobileNumber: row.MOBILENUMBER,
-        policyType: row.POLICYTYPE,
-        productName: row.PRODUCTNAME,
-        productCode: row.PRODUCTCODE,
-        premiumMode: row.PREMIUMMODE,
-        lifePremium: row.LIFEPREMIUM,
-        supplyPremium: row.SUPPLYPREMIUM,
-        externalLoad: row.EXTERNALLOAD,
-        nextPremiumDueDate: row.NEXTPREMIUMDUEDATE,
-        identificationType: row.IDENTIFICATIONTYPE,
-        identificationNumber: row.IDENTIFICATIONNUMBER,
-        agentId: row.AGENTID,
-        agentMobileNumber: row.AGENTMOBILENUMBER,
-        agentName: row.AGENTNAME,
-        sumAtRisk: row.ASSUREDSUM,
-        policyOption: '',
-        surrenderDate: '',
-      };
+    console.log(`Total pending: ${rows.length} | Batch size: ${BATCH_SIZE}`);
 
-      try {
-        const response = await axios.post(
-          'https://idra-ump.com/app/extern/v1/policy',
-          payload,
-          {
-            headers: {
-              Authorization: `Bearer ${access_token}`,
-              'Content-Type': 'application/json',
-            },
-          }
-        );
+    let allSuccesses = [];
+    let allFailures = [];
 
-        const status = typeof response.data.status === 'string' ? response.data.status : JSON.stringify(response.data.status);
-        const message = typeof response.data.message === 'string' ? response.data.message : JSON.stringify(response.data.message);
-        const code = typeof response.data.code === 'string' ? response.data.code : JSON.stringify(response.data.code);
+    for (let i = 0; i < rows.length; i += BATCH_SIZE) {
+      const batch = rows.slice(i, i + BATCH_SIZE);
+      const batchNumber = Math.floor(i / BATCH_SIZE) + 1;
+      console.log(`\n--- Batch ${batchNumber}: rows ${i + 1}–${i + batch.length} ---`);
 
-        await updatePolicyStatus(conn, row, status, message, code);
+      const { successes, failures } = await processBatch(conn, batch, access_token);
 
-        // ✅ Add to feedback array
-        feedbacks.push({
-          policyNumber: row.POLICYNUMBER,
-          status,
-          code,
-          message,
-        });
+      allSuccesses = allSuccesses.concat(successes);
+      allFailures = allFailures.concat(failures);
 
-        console.log(`✅ Synced and updated: ${row.POLICYNUMBER}`);
-        successCount++;
-      } catch (apiError) {
-        console.error(`❌ Failed to send policy ${row.POLICYNUMBER}:`, apiError.message);
-        failures.push({ policyNumber: row.POLICYNUMBER, error: apiError.message });
-        failureCount++;
-      }
+      console.log(`Batch ${batchNumber} done | ✅ ${successes.length} | ❌ ${failures.length}`);
     }
 
     res.json({
       message: 'Policy processing completed.',
-      totalSent: successCount,
-      totalFailed: failureCount,
-      successes: feedbacks,   // ✅ API response messages for successful syncs
-      failures,
+      totalPending: rows.length,
+      totalProcessed: allSuccesses.length + allFailures.length,
+      totalSent: allSuccesses.length,
+      totalFailed: allFailures.length,
+      successes: allSuccesses,
+      failures: allFailures,
     });
   } catch (err) {
     console.error('❌ Unexpected Error:', err);

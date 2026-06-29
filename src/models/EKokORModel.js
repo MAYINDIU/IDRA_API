@@ -5,21 +5,29 @@ const { connectToDbc } = require('../../utils/config'); // Your Oracle DB connec
 async function getPendingORData() {
   const connection = await connectToDbc();
   
-  const query = `
-  SELECT *
-FROM (
-    SELECT * FROM ump_ordata_pos
-    WHERE SUBSTR(PROCESS_DATE, 8, 4) = '2025'
-      AND MSG <> 'Single original receipt submitted'
-       AND MSG <> 'This OR exists in UMP'
-    UNION ALL
-    SELECT * FROM ump_ordata_tpos
-    WHERE SUBSTR(PROCESS_DATE, 8, 4) = '2025'
-      AND MSG <> 'Single original receipt submitted'
-       AND MSG <> 'This OR exists in UMP'
-)
-ORDER BY TO_DATE(SUBSTR(PROCESS_DATE,1,11),'DD-Mon-YYYY') DESC
-  `;
+  const query = `SELECT * FROM(SELECT * FROM ump_ordata_pos 
+                  WHERE traking_id is null
+                  and brname is not null
+                  and PREMIUMMODE is not null
+                  and substr(SUSPENSE,1,1)<>'-'
+                  and TOTALPAYABLEAMOUNT <>0
+                  and ORID is not null
+                  and SUBSTR(PROCESS_DATE,8,4)='2025'
+                  --and rownum<2
+                  UNION ALL
+                  SELECT * FROM ump_ordata_tpos 
+                  WHERE traking_id is null
+                  and brname is not null
+                  and PREMIUMMODE is not null
+                  and substr(SUSPENSE,1,1)<>'-'
+                  and TOTALPAYABLEAMOUNT <>0
+                  and ORID is not null
+                  and SUBSTR(PROCESS_DATE,8,4)='2025')
+                  order by to_date(SUBSTR(PROCESS_DATE,1,11),'dd-Mon-yyyy') desc`;
+
+
+  
+
 
   const result = await connection.execute(query, {}, { outFormat: oracledb.OUT_FORMAT_OBJECT });
   return { rows: result.rows, connection };
@@ -70,3 +78,7 @@ async function updateORData(connection, ORID, updateData) {
 }
 
 module.exports = { getPendingORData, getORById, updateORData };
+
+
+
+

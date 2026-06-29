@@ -2,14 +2,12 @@ const express = require('express');
 const router = express.Router();
 
 const { loginController } = require('../controller/authController');
-const { processORData1 } = require('../controller/Microorcontroller2');
-
+const { sendPoliciesToIDRA } = require('../controller/PolicyMicrosendController');
 const verifyToken = require('../authMiddleware');
 
 // 🔐 AUTH
 router.post('/login', loginController);
 
-router.post('/send-or-data2', processORData1); // you can also use POST
-
+router.post('/micro-send-policies', sendPoliciesToIDRA);
 
 module.exports = router;

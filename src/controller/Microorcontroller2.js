@@ -21,7 +21,7 @@ async function fetchAccessToken() {
 
   const response = await axios.post(
     "https://idra-ump.com/app/extern/v1/authenticate",
-    { client_id: "national", client_secret: "wReuzKZy9N" },
+    { client_id: "national", client_secret: "VFe71Xh4cs" },
     { headers: { Accept: "application/json", "Content-Type": "application/json" } }
   );
 
@@ -30,8 +30,10 @@ async function fetchAccessToken() {
   return sessionToken;
 }
 
+console.log(sessionToken)
+
 // Process OR data
-async function processORData(req, res) {
+async function processORData1(req, res) {
   let connection;
   try {
     const token = await fetchAccessToken();
@@ -155,4 +157,4 @@ async function processORData(req, res) {
   }
 }
 
-module.exports = { processORData };
+module.exports = { processORData1 };

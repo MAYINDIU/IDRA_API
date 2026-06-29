@@ -20,12 +20,14 @@ async function fetchAccessToken() {
   if (sessionToken && sessionDate === today) return sessionToken;
 
   const response = await axios.post(
-    "https://idra-ump.com/app/extern/v1/authenticate",
-    { client_id: "national", client_secret: "wReuzKZy9N" },
+    "https://e-service.idra.org.bd/api/v1/authenticate",
+    { client_id: "national@idra.org.bd", client_secret: "national@2026#" },
     { headers: { Accept: "application/json", "Content-Type": "application/json" } }
   );
 
   sessionToken = response.data.access_token;
+  // console.log(response?.data?.access_token || "Token fetched successfully");
+  console.log(sessionToken)
   sessionDate = today;
   return sessionToken;
 }
@@ -87,9 +89,10 @@ async function processORData(req, res) {
         dateOfBirth: formatDate(orRecord.DATEOFBIRTH),
       };
 
+       console.log(requestBody)
       try {
         const response = await axios.post(
-          "https://idra-ump.com/app/extern/v1/original-receipt",
+          "https://e-service.idra.org.bd/api/v1/original-receipt",
           requestBody,
           {
             headers: {

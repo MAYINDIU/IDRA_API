@@ -21,13 +21,53 @@ async function fetchAccessToken() {
 
   const response = await axios.post(
     "https://idra-ump.com/app/extern/v1/authenticate",
-    { client_id: "national", client_secret: "wReuzKZy9N" },
+    { client_id: "national", client_secret: "VFe71Xh4cs" },
     { headers: { Accept: "application/json", "Content-Type": "application/json" } }
   );
 
   sessionToken = response.data.access_token;
   sessionDate = today;
   return sessionToken;
+}
+
+/* ===============================
+   STATUS API CALL (PHP MATCH)
+================================ */
+async function fetchORStatus(token, requestBody, fallbackTrackingId) {
+  try {
+    const response = await axios.post(
+      "https://idra-ump.com/app/extern/v1/original-receipt/status",
+      requestBody,
+      {
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+
+    const data = response.data || {};
+
+    return {
+      trackingId: data.orTrackingId || fallbackTrackingId,
+      status: data.status || null,
+      code: data.code || null,
+      message: Array.isArray(data.message)
+        ? data.message[0]?.reason
+        : data.message || null,
+      url: data.url || "",
+    };
+  } catch (err) {
+    console.error("❌ STATUS API ERROR:", err.message);
+    return {
+      trackingId: fallbackTrackingId,
+      status: "FAILED",
+      code: null,
+      message: err.message,
+      url: "",
+    };
+  }
 }
 
 // Process OR data
@@ -100,40 +140,33 @@ async function processORData(req, res) {
           }
         );
 
-        const data = response.data;
-        const trackingId = data.orTrackingId || null;
-        const status = data.status || null;
-        const code = data.code || null;
-        const url = data.url || null;
+        const sendData = response.data || {};
 
+        // ✅ Use trackingId from response or fallback to ORID for status check
+        const sendTrackingId = sendData.orTrackingId || String(orRecord.ORID);
 
-                let message = "";
-                if (Array.isArray(response.data.message) && response.data.message.length > 0) {
-                // Take the 'reason' of the first element
-                message = response.data.message[0].reason;
-                } else if (typeof response.data.message === "string") {
-                message = response.data.message;
-                } else {
-                message = JSON.stringify(response.data.message);
-                }
+        /* ===============================
+           STATUS CHECK (Handles "already exists" or verification)
+        ================================ */
+        const statusResult = await fetchORStatus(
+          token,
+          { or_tracking_id: sendTrackingId },
+          sendTrackingId
+        );
 
-                // console.log(message);
-                // Output: "Total Premium amount is not equal with noOfInstallment * premiumUnitAmount"
-
-
-        // Update OR data in Oracle
+        // Update OR data in Oracle with verified status and URL
         await updateORData(connection, ORID, {
-          trackingId,
-          code,
-          status,
-          message,
-          url,
+          trackingId: statusResult.trackingId,
+          code: statusResult.code,
+          status: statusResult.status,
+          message: statusResult.message,
+          url: statusResult.url,
           sendCount: Number(sendCount),
           currentDate,
         });
 
-        results.push({ ORID, status: code === 200 || code === "200" ? "Sent" : "Error", response: data });
-        console.log(`✅ ORID ${ORID} "Message: " ${message} processed with code ${code}.`);
+        results.push({ ORID, status: statusResult.status, response: statusResult });
+        console.log(`✅ ORID ${ORID} processed with status: ${statusResult.status}.`);
       } catch (err) {
         results.push({ ORID, status: "Failed", error: err.message });
         console.error(`❌ ORID ${ORID} failed: ${err.message}`);

@@ -4,46 +4,47 @@ const { connectToDbc } = require('../../utils/config');
 async function getPendingPolicies() {
   const connection = await connectToDbc();
 
-  const query = `
-   SELECT
+//   const query = `
+// SELECT
+//       POLICYNUMBER, PROJECTCODE,
+//       POLICYHOLDERNAME, ADDRESS, POSTALCODE, DISTRICT, GENDER, MOBILENUMBER, EMAIL, DATEOFBIRTH,
+//       POLICYSTARTDATE,
+//       POLICYENDDATE,
+//        RISKSTARTDATE,
+//       POLICYTYPE, PRODUCTNAME, SUBSTR(PRODUCTCODE, 1, 2) PRODUCTCODE,
+//       PREMIUMMODE, TERM, ASSUREDSUM, LIFEPREMIUM,
+//       SUPPLYPREMIUM, EXTERNALLOAD, TOTALPREMIUM,
+//        NEXTPREMIUMDUEDATE,
+//       NOOFPAIDINSTALLMENT, TOTALPAIDAMOUNT, IDENTIFICATIONTYPE,
+//       IDENTIFICATIONNUMBER, AGENTID, AGENTMOBILENUMBER, AGENTNAME, STATUS, UUDATE
+//     FROM idraump.IDRA_POLICY_MICRO_SEND
+//     WHERE gender IS NOT NULL 
+//      AND flag IS NULL 
+//     AND (TO_CHAR(UUDATE,'DD-MM-YYYY')='17-02-2026'
+//     OR PROCESS_DATE='17-FEB-2026')
+//   `;
+
+    const query = `SELECT
       POLICYNUMBER, PROJECTCODE,
       POLICYHOLDERNAME, ADDRESS, POSTALCODE, DISTRICT, GENDER, MOBILENUMBER, EMAIL, DATEOFBIRTH,
-      TO_CHAR(POLICYSTARTDATE, 'YYYY-MM-DD') POLICYSTARTDATE,
-      TO_CHAR(POLICYENDDATE, 'YYYY-MM-DD') POLICYENDDATE,
-      TO_CHAR(RISKSTARTDATE, 'YYYY-MM-DD') RISKSTARTDATE,
+      POLICYSTARTDATE,
+      POLICYENDDATE,
+       RISKSTARTDATE,
       POLICYTYPE, PRODUCTNAME, SUBSTR(PRODUCTCODE, 1, 2) PRODUCTCODE,
       PREMIUMMODE, TERM, ASSUREDSUM, LIFEPREMIUM,
       SUPPLYPREMIUM, EXTERNALLOAD, TOTALPREMIUM,
-      TO_CHAR(NEXTPREMIUMDUEDATE, 'YYYY-MM-DD') NEXTPREMIUMDUEDATE,
+       NEXTPREMIUMDUEDATE,
       NOOFPAIDINSTALLMENT, TOTALPAIDAMOUNT, IDENTIFICATIONTYPE,
       IDENTIFICATIONNUMBER, AGENTID, AGENTMOBILENUMBER, AGENTNAME, STATUS, UUDATE
-    FROM idraump.IDRA_POLICY_AKOK_SEND
-    WHERE gender IS NOT NULL AND uflag IS NULL
-    AND POLICYSTARTDATE > TO_DATE('2026-05-31', 'YYYY-MM-DD')
-    AND POLICYSTARTDATE <= SYSDATE
-    AND POLICYSTARTDATE < ADD_MONTHS(TRUNC(SYSDATE, 'YYYY'), 12)
+    FROM idraump.IDRA_POLICY_MICRO_SEND
+    WHERE gender IS NOT NULL 
+    AND (TO_CHAR(UUDATE,'DD-MM-YYYY')='23-04-2026'
+or PROCESS_DATE = '23-APR-26')
+and TO_CHAR(rsend_date,'DD-MM-YYYY')<'23-04-2026'
+    `;
 
-    UNION ALL
 
-   SELECT
-    POLICYNUMBER, PROJECTCODE,
-    POLICYHOLDERNAME, ADDRESS, POSTALCODE, DISTRICT, GENDER, MOBILENUMBER, EMAIL, DATEOFBIRTH,
-    TO_CHAR(POLICYSTARTDATE, 'YYYY-MM-DD') POLICYSTARTDATE,
-    TO_CHAR(POLICYENDDATE, 'YYYY-MM-DD') POLICYENDDATE,
-    TO_CHAR(RISKSTARTDATE, 'YYYY-MM-DD') RISKSTARTDATE,
-    POLICYTYPE, PRODUCTNAME, SUBSTR(PRODUCTCODE, 1, 2) PRODUCTCODE,
-    PREMIUMMODE, TERM, ASSUREDSUM, LIFEPREMIUM,
-    SUPPLYPREMIUM, EXTERNALLOAD, TOTALPREMIUM,
-    TO_CHAR(NEXTPREMIUMDUEDATE, 'YYYY-MM-DD') NEXTPREMIUMDUEDATE,
-    NOOFPAIDINSTALLMENT, TOTALPAIDAMOUNT, IDENTIFICATIONTYPE,
-    IDENTIFICATIONNUMBER, TO_CHAR(AGENTID) AS AGENTID, AGENTMOBILENUMBER, NULL AS AGENTNAME, STATUS, UUDATE
-FROM idraump.IDRA_POLICY_TAKA_SEND
-WHERE gender IS NOT NULL
-  AND uflag IS NULL
-  AND POLICYSTARTDATE > TO_DATE('2026-05-31', 'YYYY-MM-DD')
-    AND POLICYSTARTDATE <= SYSDATE
-  AND POLICYSTARTDATE < ADD_MONTHS(TRUNC(SYSDATE, 'YYYY'), 12)
-  `;
+
 
   const result = await connection.execute(query, [], {
     outFormat: oracledb.OUT_FORMAT_OBJECT,
@@ -76,20 +77,21 @@ WHERE gender IS NOT NULL
 
 async function updatePolicyStatus(conn, row, status, message, code) {
   const projectCode = row.PROJECTCODE;
-  const table =
-    projectCode === 'Akokbima'
-      ? 'IDRA_POLICY_AKOK_SEND'
-      : 'IDRA_POLICY_TAKA_SEND';
+  const table ='IDRA_POLICY_MICRO_SEND';
 
   const hasUUDATE = row.UUDATE !== null;
 
   const query = hasUUDATE
-    ? `UPDATE idraump.${table}
-       SET UFLAG='1', ustatus='1', IDRA_SEND_DATE=SYSDATE, IDRA_CODE=:code, IDRA_MSG=:message, status=:status
-       WHERE policynumber=:policyNumber AND (UFLAG IS NULL)`
+    ? `  UPDATE idraump.${table}
+       SET flag='1', ustatus='1', udate=SYSDATE,RSEND_DATE=SYSDATE, code=:code, msg=:message, status=:status
+       WHERE policynumber=:policyNumber    
+       AND TO_CHAR(UUDATE,'DD-MM-YYYY')='23-04-2026'
+      `
     : `UPDATE idraump.${table}
-       SET UFLAG='1', IDRA_SEND_DATE=SYSDATE, IDRA_CODE=:code, IDRA_MSG=:message, status=:status
-       WHERE policynumber=:policyNumber AND (UFLAG IS NULL)`;
+       SET flag='1', udate=SYSDATE, code=:code, msg=:message, status=:status
+       WHERE policynumber=:policyNumber AND (flag IS NULL OR ustatus IS NULL)`;
+
+     
 
   const bindParams = {
     code: String(code ?? ''),
@@ -98,8 +100,7 @@ async function updatePolicyStatus(conn, row, status, message, code) {
     policyNumber: String(row.POLICYNUMBER ?? '')
   };
 
-  const result = await conn.execute(query, bindParams, { autoCommit: true });
-  return result;
+  await conn.execute(query, bindParams, { autoCommit: true });
 }
 
 module.exports = {

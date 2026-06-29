@@ -15,6 +15,9 @@ const ordataRouter2 = require('./routes/MicroorRoute2');
 const ordataRouter3 = require('./routes/MicroorRoute3');
 const ordataRouter4 = require('./routes/MicroorRoute4');
 const EkokordataRouter = require('./routes/EkokorRoute');
+const IdraRoute = require('./routes/idraRoutes');
+const IdraMicroRoute = require('./routes/IDRACLAIMMICROROUTE');
+const microsendRoute = require('./routes/PolicyMicrosendRoute');
 const app = express();
 
 const logDir = path.join(__dirname, '../logs');
@@ -44,5 +47,11 @@ app.use('/api', ordataRouter2);
 app.use('/api', ordataRouter3);
 app.use('/api', ordataRouter4);
 app.use('/api', EkokordataRouter);
+app.use('/api',IdraRoute);
+app.use('/api',IdraMicroRoute);
+
+app.use('/api',microsendRoute);
+
+
 
 module.exports = app;
