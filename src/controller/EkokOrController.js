@@ -6,6 +6,7 @@ const {
 } = require("../models/EKokORModel");
 
 let sessionToken = null;
+let sessionRefreshToken = null;
 let sessionDate = null;
 
 /* ===============================
@@ -27,12 +28,29 @@ async function fetchAccessToken() {
     return sessionToken;
   }
 
+  // Use refresh_token if available (valid for 2 days) to avoid re-sending credentials
+  if (sessionRefreshToken) {
+    try {
+      const refreshResponse = await axios.post(
+        "https://e-service.idra.org.bd/api/v1/refresh-token",
+        { refresh_token: sessionRefreshToken },
+        { headers: { Accept: "application/json", "Content-Type": "application/json" } }
+      );
+      sessionToken = refreshResponse.data.access_token;
+      sessionRefreshToken = refreshResponse.data.refresh_token || sessionRefreshToken;
+      sessionDate = today;
+      return sessionToken;
+    } catch {
+      // refresh expired — fall through to full re-authenticate
+    }
+  }
+
   const response = await axios.post(
     "https://e-service.idra.org.bd/api/v1/authenticate",
-   {
-          client_id: 'national@idra.org.bd',
-          client_secret: 'national@2026#',
-        },
+    {
+      client_id: 'mizan_plicl@yahoo.com',
+      client_secret: 'national@2026#',
+    },
     {
       headers: {
         Accept: "application/json",
@@ -42,6 +60,7 @@ async function fetchAccessToken() {
   );
 
   sessionToken = response.data.access_token;
+  sessionRefreshToken = response.data.refresh_token;
   sessionDate = today;
 
   return sessionToken;
@@ -53,7 +72,7 @@ async function fetchAccessToken() {
 async function fetchORStatus(token, requestBody, fallbackTrackingId) {
   try {
     const response = await axios.post(
-      "https://idra-ump.com/app/extern/v1/original-receipt/status",
+      "https://e-service.idra.org.bd/api/v1/original-receipt/status",
       requestBody,
       {
         headers: {
@@ -121,7 +140,7 @@ async function processORData(req, res) {
         const sendBody = {
           orId: String(orRecord.ORID),
           orSerialNumber: "",
-          policyNumber: "1032714734",
+          policyNumber: String(orRecord.POLICY || ""),
           productCode: String(orRecord.PRODUCTCODE),
           officeBranchCode: orRecord.OFFICECODE,
           officeBranchName: orRecord.BRNAME,
@@ -149,7 +168,7 @@ async function processORData(req, res) {
           dateOfBirth: formatDate(orRecord.DATEOFBIRTH),
         };
 
-        // console.log(sendBody)
+        // console.log(`📦 PAYLOAD ORID ${ORID}:`, JSON.stringify(sendBody, null, 2));
 
         const sendResponse = await axios.post(
           "https://e-service.idra.org.bd/api/v1/original-receipt",
@@ -164,7 +183,11 @@ async function processORData(req, res) {
         );
 
         const sendData = sendResponse.data || {};
-        // console.log(sendData)
+        console.log(`📨 SEND RESULT ORID ${ORID}:`, JSON.stringify({
+          httpStatus: sendResponse.status,
+          headers: sendResponse.headers,
+          data: sendData,
+        }, null, 2));
 
         // ✅ MUST USE THIS FOR STATUS API
         const sendTrackingId =
@@ -188,15 +211,16 @@ async function processORData(req, res) {
         /* ===============================
            UPDATE ORACLE
         ================================ */
+        const isSuccess = String(statusResult.code) === '200';
         await updateORData(connection, ORID, {
           trackingId: statusResult.trackingId,
           code: statusResult.code,
           status: statusResult.status,
           message: statusResult.message,
-          url: statusResult.url,
+          url: sendData.url || statusResult.url || "",
           sendCount,
           currentDate,
-        });
+        }, isSuccess);
 
         results.push({
           ORID,

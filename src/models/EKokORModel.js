@@ -5,29 +5,28 @@ const { connectToDbc } = require('../../utils/config'); // Your Oracle DB connec
 async function getPendingORData() {
   const connection = await connectToDbc();
   
-  const query = `SELECT * FROM(SELECT * FROM ump_ordata_pos 
-                  WHERE traking_id is null
+  const query = `SELECT * FROM(
+                  SELECT * FROM ump_ordata_pos 
+                  WHERE IDRA_traking_id is null
                   and brname is not null
                   and PREMIUMMODE is not null
                   and substr(SUSPENSE,1,1)<>'-'
                   and TOTALPAYABLEAMOUNT <>0
                   and ORID is not null
-                  and SUBSTR(PROCESS_DATE,8,4)='2025'
+                  and SUBSTR(PROCESS_DATE,8,4)='2026'
+                  AND TO_DATE(SUBSTR(PROCESS_DATE,1,11),'dd-Mon-yyyy')>'21-Jun-2026'
                   --and rownum<2
                   UNION ALL
                   SELECT * FROM ump_ordata_tpos 
-                  WHERE traking_id is null
+                  WHERE IDRA_traking_id is null
                   and brname is not null
                   and PREMIUMMODE is not null
                   and substr(SUSPENSE,1,1)<>'-'
                   and TOTALPAYABLEAMOUNT <>0
                   and ORID is not null
-                  and SUBSTR(PROCESS_DATE,8,4)='2025')
-                  order by to_date(SUBSTR(PROCESS_DATE,1,11),'dd-Mon-yyyy') desc`;
-
-
-  
-
+                  and SUBSTR(PROCESS_DATE,8,4)='2026'
+                  AND TO_DATE(SUBSTR(PROCESS_DATE,1,11),'dd-Mon-yyyy')>'21-Jun-2026')
+                  ORDER BY TO_DATE(SUBSTR(PROCESS_DATE,1,11),'dd-Mon-yyyy') DESC`;
 
   const result = await connection.execute(query, {}, { outFormat: oracledb.OUT_FORMAT_OBJECT });
   return { rows: result.rows, connection };
@@ -45,21 +44,29 @@ async function getORById(connection, ORID) {
 }
 
 // Update OR data
-async function updateORData(connection, ORID, updateData) {
+async function updateORData(connection, ORID, updateData, isSuccess = false) {
   const { trackingId, code, status, message, url, sendCount, currentDate } = updateData;
 
-  const query = `
-    UPDATE ump_ordata_pos
-    SET traking_id = :trackingId,
-        flag = '1',
-        code = :code,
-        status = :status,
-        msg = :message,
-        elink = :url,
-        send_count = :sendCount,
-        udate = :currentDate
-        WHERE ORID = :ORID
-  `;
+  const query = isSuccess
+    ? `UPDATE ump_ordata_pos
+       SET IDRA_TRAKING_ID = :trackingId,
+           uflag = '1',
+           idra_code = :code,
+           status = :status,
+           idra_msg = :message,
+           IDRA_LINK = :url,
+           send_count = :sendCount,
+           idra_send_date = :currentDate
+       WHERE ORID = :ORID`
+    : `UPDATE ump_ordata_pos
+       SET IDRA_TRAKING_ID = :trackingId,
+           idra_code = :code,
+           status = :status,
+           idra_msg = :message,
+           IDRA_LINK = :url,
+           send_count = :sendCount,
+           idra_send_date = :currentDate
+       WHERE ORID = :ORID`;
 
   await connection.execute(
     query,
